@@ -30,7 +30,7 @@ if submitted:
             "domain": domain
         }
         try:
-            res = requests.post("https://ai-daily-newsteller.onrender.com", json=payload)
+            res = requests.post("https://ai-daily-newsteller.onrender.com/subscribe", json=payload)
             if res.status_code == 200:
                 st.success(f"🎉 Success! Update dispatched from {sender_email} to {receiver_email}. Check receiver phone for sound alert!")
             else:
