@@ -1,4 +1,5 @@
 from fastapi import FastAPI, BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import sqlite3
 import smtplib
@@ -7,6 +8,15 @@ from email.mime.multipart import MIMEMultipart
 import uvicorn
 
 app = FastAPI()
+
+# Enable CORS for Streamlit Cloud access
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class SeparateSenderRegistration(BaseModel):
     name: str
@@ -34,13 +44,12 @@ def init_db():
 init_db()
 
 def generate_ai_digest(name: str, domain: str) -> str:
-    # Cloud fallback response (avoiding Ollama crash on free servers)
     return (
         f"Hello {name}!\n\n"
-        f"🚀 Here is your Daily Automated Digest for {domain}:\n"
-        f"1. AI & Infrastructure automation scaling rapidly in modern dev setups.\n"
-        f"2. Multi-sender email dispatcher pipeline verified.\n"
-        f"3. Operational systems running healthy today.\n\n"
+        f"🚀 Daily Digest Update ({domain}):\n"
+        f"1. Scalable architecture deployed successfully.\n"
+        f"2. Multi-sender dynamic email setup active.\n"
+        f"3. Operational pipelines healthy.\n\n"
         f"Best regards,\nAutomated Newsletter System"
     )
 
@@ -54,14 +63,16 @@ def send_dynamic_email(sender_email: str, sender_pass: str, receiver_email: str,
     msg.attach(MIMEText(content, 'plain'))
 
     try:
+        # Strip all whitespace from App Password
+        clean_pass = sender_pass.replace(" ", "").strip()
         server = smtplib.SMTP('smtp.gmail.com', 587)
         server.starttls()
-        server.login(sender_email, sender_pass)
-        server.sendmail(sender_email, receiver_email, msg.as_string())
+        server.login(sender_email.strip(), clean_pass)
+        server.sendmail(sender_email.strip(), receiver_email.strip(), msg.as_string())
         server.quit()
-        print(f"✅ SUCCESS: {sender_email} -> {receiver_email}")
+        print(f"✅ DISPATCH SUCCESS: {sender_email} -> {receiver_email}")
     except Exception as e:
-        print(f"❌ SMTP ERROR: {e}")
+        print(f"❌ DISPATCH FAILED: {e}")
 
 @app.post("/subscribe")
 def subscribe_user(user: SeparateSenderRegistration, background_tasks: BackgroundTasks):
@@ -77,7 +88,6 @@ def subscribe_user(user: SeparateSenderRegistration, background_tasks: Backgroun
     except Exception as e:
         print(f"DB Error: {e}")
 
-    # Instant email trigger
     background_tasks.add_task(
         send_dynamic_email, 
         user.sender_email, 
