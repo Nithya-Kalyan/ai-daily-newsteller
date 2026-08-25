@@ -8,8 +8,8 @@ st.set_page_config(page_title="AI Tech Updates", page_icon="⚡", layout="center
 st.title("⚡ Direct AI Tech Newsletter")
 st.caption("Enter phone and target email to receive instant spot tech update")
 
-with st.form("clean_form"):
-    phone = st.text_input("Mobile Phone Number", max_chars=10, placeholder="9876543210")
+with st.form("clean_user_form"):
+    phone = st.text_input("Mobile Phone Number", max_chars=10, placeholder="7989176007")
     receiver_email = st.text_input("Target Email Address", placeholder="user@gmail.com")
     domain_choice = st.selectbox("Select Domain Topic", ["AI & Machine Learning", "Cloud Infrastructure", "Cybersecurity"])
     
@@ -24,12 +24,12 @@ with st.form("clean_form"):
             }
             with st.spinner("Dispatching update to target inbox..."):
                 try:
-                    res = requests.post(f"{BACKEND_URL}/subscribe-simple", json=payload)
+                    res = requests.post(f"{BACKEND_URL}/subscribe-direct", json=payload)
                     if res.status_code == 200:
                         st.balloons()
                         st.success(f"🎉 Spot Tech Update dispatched directly to {receiver_email}!")
                     else:
-                        st.error("Dispatch issue. Please check network.")
+                        st.error("Server processing error. Try again.")
                 except Exception as e:
                     st.error(f"Connection Error: {e}")
         else:
