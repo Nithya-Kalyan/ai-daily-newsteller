@@ -18,8 +18,8 @@ app.add_middleware(
 )
 
 # Place your fixed system sender credentials here
-SYSTEM_SENDER_EMAIL = "jangiticharan20@gmail.com"
-SYSTEM_APP_PASSWORD = "ktucoeozjlfuzbao"
+SYSTEM_SENDER_EMAIL = "kalyankumarjalli07@gmail.com"
+SYSTEM_APP_PASSWORD = "vacoyjtdviwoccmr"
 
 def init_db():
     conn = sqlite3.connect('newsletter.db')
