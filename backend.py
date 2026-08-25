@@ -1,4 +1,4 @@
-from fastapi import FastAPI, BackgroundTasks, HTTPException
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import sqlite3
@@ -18,10 +18,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Credentials Setup
-SYSTEM_SENDER_EMAIL = "kalyankumarjalli07@gmail.com"  # Enter Host Gmail
-SYSTEM_APP_PASSWORD = "mkzbbwfbbjzpimzz"  # Enter 16-digit App Pass
-OPENAI_API_KEY = "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"          # Enter OpenAI API Key
+# Replace with your actual credentials
+SYSTEM_SENDER_EMAIL = "kalyankumarjalli07@gmail.com"  
+SYSTEM_APP_PASSWORD = "uqddqmoipeijmnqr"  
+OPENAI_API_KEY = "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"          
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
@@ -47,21 +47,20 @@ class UserSubscribeReq(BaseModel):
     domain: str
 
 def generate_ai_content(domain: str) -> str:
-    """Generates dynamic newsletter content using OpenAI"""
     try:
-        prompt = f"Write a brief, high-value daily tech newsletter update (3 bullet points) about latest trends in {domain} for technical subscribers."
+        print("--> Generating AI Content via OpenAI...")
+        prompt = f"Write 3 brief bullet points on latest developments in {domain}."
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=200
+            max_tokens=150
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
-        print(f"OpenAI Generation Error: {e}")
-        return f"Daily Updates for {domain}:\n- Advanced infrastructure development\n- Security & AI automated integration\n- Industry scalability updates"
+        print(f"!!! OPENAI ERROR: {str(e)}")
+        return f"Daily Updates for {domain}:\n- Advanced infrastructure development\n- Automated AI workflows"
 
 def send_instant_newsletter(receiver_email: str, phone: str, domain: str):
-    # 1. Generate AI Content dynamically
     ai_article = generate_ai_content(domain)
     
     msg = MIMEMultipart()
@@ -69,29 +68,23 @@ def send_instant_newsletter(receiver_email: str, phone: str, domain: str):
     msg['To'] = receiver_email
     msg['Subject'] = f"⚡ AI Daily Digest: {domain}"
     
-    body = (
-        f"Hi Subscriber!\n\n"
-        f"Here is your AI-curated daily update for topic: {domain}\n\n"
-        f"{ai_article}\n\n"
-        f"----------------------------------------\n"
-        f"Registered Phone: {phone}\n"
-        f"Best regards,\nAI Automated Newsletter Engine"
-    )
+    body = f"Hi!\n\nHere is your update for {domain}:\n\n{ai_article}\n\nBest regards,\nAI Newsletter Team"
     msg.attach(MIMEText(body, 'plain'))
     
     try:
+        print("--> Connecting to SMTP Server...")
         clean_pass = SYSTEM_APP_PASSWORD.replace(" ", "").strip()
         server = smtplib.SMTP('smtp.gmail.com', 587)
         server.starttls()
         server.login(SYSTEM_SENDER_EMAIL.strip(), clean_pass)
         server.sendmail(SYSTEM_SENDER_EMAIL.strip(), receiver_email.strip(), msg.as_string())
         server.quit()
-        print(f"SUCCESS: AI Newsletter sent to {receiver_email}")
+        print(f" SUCCESS: Mail delivered to {receiver_email}")
     except Exception as e:
-        print(f"SMTP Dispatch Error: {e}")
+        print(f"!!! SMTP DISPATCH ERROR: {str(e)}")
 
 @app.post("/subscribe-direct")
-def subscribe_direct(req: UserSubscribeReq, background_tasks: BackgroundTasks):
+def subscribe_direct(req: UserSubscribeReq):
     try:
         conn = sqlite3.connect('newsletter.db')
         cursor = conn.cursor()
@@ -104,8 +97,9 @@ def subscribe_direct(req: UserSubscribeReq, background_tasks: BackgroundTasks):
     except Exception as e:
         print("DB Error:", e)
         
-    background_tasks.add_task(send_instant_newsletter, req.email, req.phone, req.domain)
-    return {"status": "success", "message": "AI Newsletter Dispatched"}
+    # Synchronous Execution so errors print immediately in Render Logs
+    send_instant_newsletter(req.email, req.phone, req.domain)
+    return {"status": "success", "message": "Newsletter Dispatched"}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=10000)
