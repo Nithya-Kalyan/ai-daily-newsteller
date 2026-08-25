@@ -19,7 +19,7 @@ app.add_middleware(
 )
 
 # Credentials Setup
-SYSTEM_SENDER_EMAIL = "your_system_email@gmail.com"  # Enter Host Gmail
+SYSTEM_SENDER_EMAIL = "kalyankumarjalli07@gmail.com"  # Enter Host Gmail
 SYSTEM_APP_PASSWORD = "your_16_digit_app_password"  # Enter 16-digit App Pass
 OPENAI_API_KEY = "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"          # Enter OpenAI API Key
 
