@@ -1,41 +1,76 @@
 import streamlit as st
 import requests
 
-st.set_page_config(page_title="AI Digest - Ting Sound Test", page_icon="🔔", layout="centered")
+BACKEND_URL = "https://ai-daily-newsteller.onrender.com"
 
-st.title("🔔 Sound Notification AI Dispatcher")
-st.write("Send email from one account to another to trigger the phone's **Ting!** alert sound.")
+st.set_page_config(page_title="Dynamic AI Update", page_icon="⚡", layout="centered")
 
-with st.form("sound_test_form"):
-    name = st.text_input("Subscriber Name")
-    
-    st.markdown("**1. Sender Credentials (Mail pampinche account):**")
-    sender_email = st.text_input("Sender Gmail Address")
-    sender_app_pass = st.text_input("Sender 16-Digit App Password", type="password")
-    
-    st.markdown("**2. Target Phone Inbox (Notification ravalsina account):**")
-    receiver_email = st.text_input("Receiver Target Email Address")
-    
-    domain = st.selectbox("Preferred Topic Domain", ["Software Engineering", "Cloud Systems", "AI & ML", "Cybersecurity"])
-    
-    submitted = st.form_submit_button("Dispatch & Trigger Sound Alert 🔊")
+st.title("⚡ Direct Dynamic Newsletter Pipeline")
 
-if submitted:
-    if name and sender_email and sender_app_pass and receiver_email:
-        payload = {
-            "name": name,
-            "sender_email": sender_email,
-            "sender_app_password": sender_app_pass.replace(" ", ""),
-            "receiver_email": receiver_email,
-            "domain": domain
-        }
-        try:
-            res = requests.post("https://ai-daily-newsteller.onrender.com/subscribe", json=payload)
+if "step" not in st.session_state:
+    st.session_state.step = 1
+if "phone" not in st.session_state:
+    st.session_state.phone = ""
+
+# STEP 1: Phone & Fast2SMS Key Spot Input
+if st.session_state.step == 1:
+    st.subheader("Step 1: Mobile OTP Verification 📱")
+    phone_input = st.text_input("Enter Mobile Phone (10 digits)", max_chars=10)
+    fast2sms_key = st.text_input("Fast2SMS Dev API Key", type="password")
+    
+    if st.button("Trigger OTP 📲"):
+        if phone_input and fast2sms_key:
+            res = requests.post(f"{BACKEND_URL}/send-otp", json={
+                "phone": phone_input,
+                "fast2sms_api_key": fast2sms_key
+            })
             if res.status_code == 200:
-                st.success(f"🎉 Success! Update dispatched from {sender_email} to {receiver_email}. Check receiver phone for sound alert!")
+                st.session_state.phone = phone_input
+                st.session_state.step = 2
+                st.rerun()
             else:
-                st.error("Backend dispatch error.")
-        except Exception:
-            st.error("Backend not reachable. Run `python backend.py`.")
-    else:
-        st.warning("Please fill all required inputs.")
+                st.error("Failed to send OTP. Check API Key.")
+        else:
+            st.warning("Please fill Mobile Number & API Key.")
+
+# STEP 2: Enter Phone OTP
+elif st.session_state.step == 2:
+    st.subheader("Step 2: Enter OTP Code 🔒")
+    otp_code = st.text_input("6-Digit OTP Received on Phone", max_chars=6)
+    
+    if st.button("Verify Phone OTP ✅"):
+        res = requests.post(f"{BACKEND_URL}/verify-otp", json={
+            "phone": st.session_state.phone,
+            "otp": otp_code
+        })
+        if res.status_code == 200:
+            st.session_state.step = 3
+            st.rerun()
+        else:
+            st.error("Invalid OTP code.")
+
+# STEP 3: Take Email Spot Input & Dispatch Immediately
+elif st.session_state.step == 3:
+    st.success("📱 Phone Verified!")
+    st.subheader("Step 3: Setup Delivery Email & Preferences ✉️")
+    
+    target_email = st.text_input("Receiver Target Email Address")
+    sender_email = st.text_input("Dispatch Sender Email Address")
+    sender_pass = st.text_input("Sender App Password", type="password")
+    domain = st.selectbox("Preferred Topic Domain", ["AI & ML", "Cloud", "Cybersecurity"])
+    
+    if st.button("Dispatch Spot Tech Update 🚀"):
+        if target_email and sender_email and sender_pass:
+            payload = {
+                "phone": st.session_state.phone,
+                "email": target_email,
+                "domain": domain,
+                "sender_email": sender_email,
+                "sender_password": sender_pass
+            }
+            res = requests.post(f"{BACKEND_URL}/subscribe", json=payload)
+            if res.status_code == 200:
+                st.balloons()
+                st.success(f"Spot tech update sent directly to {target_email}!")
+            else:
+                st.error("Dispatch Failed.")
