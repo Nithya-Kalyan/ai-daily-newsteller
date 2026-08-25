@@ -18,8 +18,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-FAST2SMS_API_KEY = "Drw6X2mzMFnZ54bBOo90ChUGIT3iaSQAvclYg8Nk1PHfqtxLjWK0Me21GwkFWOtTVRcnXbLs974a86Nd"
-# Store active verification sessions dynamically in memory
+
+# Replace only your Fast2SMS API Key here
+FAST2SMS_API_KEY = "unT74CcmX61p7XS6lLhrhkKrZdwl6OaGjLaBEhejPbfQowuqoNxfq8wIBDXS"
+
 otp_store = {}
 verified_phones = set()
 
@@ -41,7 +43,6 @@ init_db()
 
 class SendOTPReq(BaseModel):
     phone: str
-    fast2sms_api_key: str
 
 class VerifyOTPReq(BaseModel):
     phone: str
@@ -61,22 +62,18 @@ def send_sms_otp(phone: str, otp: str):
         'authorization': FAST2SMS_API_KEY,
         'Content-Type': "application/x-www-form-urlencoded"
     }
-    requests.post(url, data=payload, headers=headers)
+    try:
+        requests.post(url, data=payload, headers=headers)
+    except Exception as e:
+        print("SMS Error:", e)
 
 def send_dynamic_email(sender_email: str, sender_pass: str, receiver_email: str, domain: str):
     msg = MIMEMultipart()
     msg['From'] = sender_email
     msg['To'] = receiver_email
-    msg['Subject'] = f"🚀 Live AI Tech Update: {domain}"
+    msg['Subject'] = f"🚀 AI Spot Tech Update: {domain}"
     
-    body = (
-        f"Hello!\n\n"
-        f"🔥 Dynamic Spot Update for {domain}:\n"
-        f"1. AI Agents & autonomous workflows running dynamically.\n"
-        f"2. Phone verification via Fast2SMS successfully passed.\n"
-        f"3. Spot dispatch architecture initialized without backend hardcoding.\n\n"
-        f"Best regards,\nAutomated AI System"
-    )
+    body = f"Hello!\n\nYour spot subscription for topic {domain} is active.\n\nBest,\nAutomated System"
     msg.attach(MIMEText(body, 'plain'))
     
     try:
@@ -86,15 +83,14 @@ def send_dynamic_email(sender_email: str, sender_pass: str, receiver_email: str,
         server.login(sender_email.strip(), clean_pass)
         server.sendmail(sender_email.strip(), receiver_email.strip(), msg.as_string())
         server.quit()
-        print("✅ Email Triggered Successfully")
     except Exception as e:
-        print("❌ Email Dispatch Error:", e)
+        print("Email Dispatch Error:", e)
 
 @app.post("/send-otp")
 def trigger_otp(req: SendOTPReq):
     otp = str(random.randint(100000, 999999))
     otp_store[req.phone] = otp
-    send_sms_otp(req.phone, otp, req.fast2sms_api_key)
+    send_sms_otp(req.phone, otp)
     return {"status": "success"}
 
 @app.post("/verify-otp")
@@ -110,18 +106,6 @@ def subscribe(req: SubscribeReq, background_tasks: BackgroundTasks):
     if req.phone not in verified_phones:
         raise HTTPException(status_code=400, detail="Phone OTP Not Verified")
     
-    try:
-        conn = sqlite3.connect('newsletter.db')
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT OR REPLACE INTO verified_subscribers (phone, email, domain) VALUES (?, ?, ?)",
-            (req.phone, req.email, req.domain)
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        print("DB Error:", e)
-        
     background_tasks.add_task(
         send_dynamic_email, 
         req.sender_email, 
