@@ -2,8 +2,6 @@ from fastapi import FastAPI, BackgroundTasks, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import sqlite3
-import random
-import requests
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -19,19 +17,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Replace only your Fast2SMS API Key here
-FAST2SMS_API_KEY = "unT74CcmX61p7XS6lLhrhkKrZdwl6OaGjLaBEhejPbfQowuqoNxfq8wIBDXS"
-
-otp_store = {}
-verified_phones = set()
-
 def init_db():
     conn = sqlite3.connect('newsletter.db')
     cursor = conn.cursor()
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS verified_subscribers (
+        CREATE TABLE IF NOT EXISTS subscribers (
             id INTEGER PRIMARY KEY AUTOINCREMENT, 
-            phone TEXT UNIQUE,
+            phone TEXT,
             email TEXT,
             domain TEXT
         )
@@ -41,31 +33,12 @@ def init_db():
 
 init_db()
 
-class SendOTPReq(BaseModel):
+class QuickDispatchReq(BaseModel):
     phone: str
-
-class VerifyOTPReq(BaseModel):
-    phone: str
-    otp: str
-
-class SubscribeReq(BaseModel):
-    phone: str
-    email: str
+    receiver_email: str
     domain: str
     sender_email: str
     sender_password: str
-
-def send_sms_otp(phone: str, otp: str):
-    url = "https://www.fast2sms.com/dev/bulkV2"
-    payload = f"variables_values={otp}&route=otp&numbers={phone}"
-    headers = {
-        'authorization': FAST2SMS_API_KEY,
-        'Content-Type': "application/x-www-form-urlencoded"
-    }
-    try:
-        requests.post(url, data=payload, headers=headers)
-    except Exception as e:
-        print("SMS Error:", e)
 
 def send_dynamic_email(sender_email: str, sender_pass: str, receiver_email: str, domain: str):
     msg = MIMEMultipart()
@@ -73,7 +46,13 @@ def send_dynamic_email(sender_email: str, sender_pass: str, receiver_email: str,
     msg['To'] = receiver_email
     msg['Subject'] = f"🚀 AI Spot Tech Update: {domain}"
     
-    body = f"Hello!\n\nYour spot subscription for topic {domain} is active.\n\nBest,\nAutomated System"
+    body = (
+        f"Hello!\n\n"
+        f"Here is your daily tech update for {domain}:\n"
+        f"1. AI Agents pushing autonomous execution boundaries.\n"
+        f"2. Cloud Infrastructure scalable architectures optimized.\n\n"
+        f"Best regards,\nAI Newsletter System"
+    )
     msg.attach(MIMEText(body, 'plain'))
     
     try:
@@ -86,34 +65,28 @@ def send_dynamic_email(sender_email: str, sender_pass: str, receiver_email: str,
     except Exception as e:
         print("Email Dispatch Error:", e)
 
-@app.post("/send-otp")
-def trigger_otp(req: SendOTPReq):
-    otp = str(random.randint(100000, 999999))
-    otp_store[req.phone] = otp
-    send_sms_otp(req.phone, otp)
-    return {"status": "success"}
-
-@app.post("/verify-otp")
-def verify_otp(req: VerifyOTPReq):
-    if otp_store.get(req.phone) == req.otp:
-        verified_phones.add(req.phone)
-        del otp_store[req.phone]
-        return {"status": "success"}
-    raise HTTPException(status_code=400, detail="Invalid OTP")
-
-@app.post("/subscribe")
-def subscribe(req: SubscribeReq, background_tasks: BackgroundTasks):
-    if req.phone not in verified_phones:
-        raise HTTPException(status_code=400, detail="Phone OTP Not Verified")
-    
+@app.post("/subscribe-direct")
+def subscribe_direct(req: QuickDispatchReq, background_tasks: BackgroundTasks):
+    try:
+        conn = sqlite3.connect('newsletter.db')
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO subscribers (phone, email, domain) VALUES (?, ?, ?)",
+            (req.phone, req.receiver_email, req.domain)
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print("DB Error:", e)
+        
     background_tasks.add_task(
         send_dynamic_email, 
         req.sender_email, 
         req.sender_password, 
-        req.email, 
+        req.receiver_email, 
         req.domain
     )
-    return {"status": "success"}
+    return {"status": "success", "message": "Newsletter Sent"}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=10000)
