@@ -18,7 +18,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+FAST2SMS_API_KEY = "Drw6X2mzMFnZ54bBOo90ChUGIT3iaSQAvclYg8Nk1PHfqtxLjWK0Me21GwkFWOtTVRcnXbLs974a86Nd"
 # Store active verification sessions dynamically in memory
 otp_store = {}
 verified_phones = set()
@@ -54,11 +54,11 @@ class SubscribeReq(BaseModel):
     sender_email: str
     sender_password: str
 
-def send_sms_otp(phone: str, otp: str, api_key: str):
+def send_sms_otp(phone: str, otp: str):
     url = "https://www.fast2sms.com/dev/bulkV2"
     payload = f"variables_values={otp}&route=otp&numbers={phone}"
     headers = {
-        'authorization': api_key,
+        'authorization': FAST2SMS_API_KEY,
         'Content-Type': "application/x-www-form-urlencoded"
     }
     requests.post(url, data=payload, headers=headers)
