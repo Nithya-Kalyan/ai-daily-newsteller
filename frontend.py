@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 
-BACKEND_URL = "https://ai-daily-newsteller.onrender.com"
+BACKEND_URL = "https://ai-daily-newsteller-1.onrender.com"
 
 st.set_page_config(page_title="AI Tech Updates", page_icon="⚡", layout="centered")
 
