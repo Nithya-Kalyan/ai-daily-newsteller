@@ -2,7 +2,9 @@ from fastapi import FastAPI, BackgroundTasks, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import sqlite3
-import requests
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 import uvicorn
 
 app = FastAPI()
@@ -14,6 +16,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Place your fixed system sender credentials here
+SYSTEM_SENDER_EMAIL = "jangiticharan20@gmail.com"
+SYSTEM_APP_PASSWORD = "ktucoeozjlfuzbao"
 
 def init_db():
     conn = sqlite3.connect('newsletter.db')
@@ -31,26 +37,40 @@ def init_db():
 
 init_db()
 
-class SimpleSubscribeReq(BaseModel):
+class UserSubscribeReq(BaseModel):
     phone: str
     email: str
     domain: str
 
-def send_instant_notification(receiver_email: str, phone: str, domain: str):
-    # Free public email dispatcher (No passwords needed)
+def send_instant_newsletter(receiver_email: str, phone: str, domain: str):
+    msg = MIMEMultipart()
+    msg['From'] = SYSTEM_SENDER_EMAIL
+    msg['To'] = receiver_email
+    msg['Subject'] = f"🚀 AI Spot Newsletter: {domain}"
+    
+    body = (
+        f"Hello!\n\n"
+        f"Welcome to AI Daily Newsletter!\n"
+        f"Your spot updates for domain '{domain}' are active for Phone: {phone}.\n\n"
+        f"1. Next-gen AI deployment pipelines verified.\n"
+        f"2. System automation active.\n\n"
+        f"Best regards,\nAI Newsletter Team"
+    )
+    msg.attach(MIMEText(body, 'plain'))
+    
     try:
-        url = "https://formsubmit.co/ajax/" + receiver_email.strip()
-        data = {
-            "subject": f"🚀 AI Spot Newsletter: {domain}",
-            "message": f"Welcome! Your subscription for domain '{domain}' is active for phone: {phone}.",
-            "_template": "basic"
-        }
-        requests.post(url, data=data)
+        clean_pass = SYSTEM_APP_PASSWORD.replace(" ", "").strip()
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(SYSTEM_SENDER_EMAIL.strip(), clean_pass)
+        server.sendmail(SYSTEM_SENDER_EMAIL.strip(), receiver_email.strip(), msg.as_string())
+        server.quit()
+        print("Mail delivered successfully!")
     except Exception as e:
-        print("Dispatcher Error:", e)
+        print("SMTP Dispatch Error:", e)
 
-@app.post("/subscribe-simple")
-def subscribe_simple(req: SimpleSubscribeReq, background_tasks: BackgroundTasks):
+@app.post("/subscribe-direct")
+def subscribe_direct(req: UserSubscribeReq, background_tasks: BackgroundTasks):
     try:
         conn = sqlite3.connect('newsletter.db')
         cursor = conn.cursor()
@@ -63,8 +83,8 @@ def subscribe_simple(req: SimpleSubscribeReq, background_tasks: BackgroundTasks)
     except Exception as e:
         print("DB Error:", e)
         
-    background_tasks.add_task(send_instant_notification, req.email, req.phone, req.domain)
-    return {"status": "success", "message": "Email Dispatched"}
+    background_tasks.add_task(send_instant_newsletter, req.email, req.phone, req.domain)
+    return {"status": "success", "message": "Newsletter Dispatched"}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=10000)
