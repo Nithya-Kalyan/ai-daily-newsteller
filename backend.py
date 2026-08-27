@@ -19,13 +19,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Render Environment Variables nunchi auto pick aithayi (No Hardcode)
-SYSTEM_SENDER_EMAIL = os.getenv("SYSTEM_SENDER_EMAIL", "jj3457731@gmail.com")
-SYSTEM_APP_PASSWORD = os.getenv("SYSTEM_APP_PASSWORD", "shjufljpxgzmmpmn")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "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")
-
-client = OpenAI(api_key=OPENAI_API_KEY.strip()) if OPENAI_API_KEY else None
-
 def init_db():
     conn = sqlite3.connect('newsletter.db')
     cursor = conn.cursor()
@@ -48,41 +41,58 @@ class UserSubscribeReq(BaseModel):
     domain: str
 
 def generate_ai_content(domain: str) -> str:
-    if not client:
-        return f"Daily Updates for {domain}:\n- AI automation active\n- System online"
+    # Direct Environment retrieval inside execution block
+    api_token = os.environ.get("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")
+    
+    if not api_token:
+        print("--> OpenAI key not configured in environment, returning template fallback.")
+        return f"Daily Updates for {domain}:\n- AI automation engine active\n- Infrastructure operational\n- Real-time updates online"
+    
     try:
+        print("--> Calling OpenAI API...")
+        client = OpenAI(api_key=api_token.strip())
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": f"Write 3 daily tech bullets on {domain}."}],
+            messages=[{"role": "user", "content": f"Write 3 short daily tech update bullet points on {domain}."}],
             max_tokens=150
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
-        print(f"OPENAI ERROR: {str(e)}")
-        return f"Daily Updates for {domain}:\n- AI automation online\n- Infrastructure active"
+        print(f"!!! OPENAI API ERROR: {str(e)}")
+        return f"Daily Updates for {domain}:\n- Deep learning models processing updates\n- Infrastructure fully functional\n- System online"
 
 def send_instant_newsletter(receiver_email: str, phone: str, domain: str):
+    sender_mail = os.environ.get("jj3457731@gmail.com")
+    sender_pass = os.environ.get("shjufljpxgzmmpmn")
+    
     ai_article = generate_ai_content(domain)
     
+    if not sender_mail or not sender_pass:
+        print("!!! SMTP Error: System email credentials not configured in environment.")
+        return False
+
     msg = MIMEMultipart()
-    msg['From'] = SYSTEM_SENDER_EMAIL.strip()
+    msg['From'] = sender_mail.strip()
     msg['To'] = receiver_email.strip()
     msg['Subject'] = f"⚡ AI Daily Digest: {domain}"
     
-    body = f"Hi!\n\nHere is your update for {domain}:\n\n{ai_article}\n\nPhone Registered: {phone}"
+    body = f"Hi!\n\nHere is your requested AI update for {domain}:\n\n{ai_article}\n\nRegistered Phone: {phone}"
     msg.attach(MIMEText(body, 'plain'))
     
     try:
-        clean_pass = SYSTEM_APP_PASSWORD.replace(" ", "").strip()
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls()
-        server.login(SYSTEM_SENDER_EMAIL.strip(), clean_pass)
-        server.sendmail(SYSTEM_SENDER_EMAIL.strip(), receiver_email.strip(), msg.as_string())
+        clean_pass = sender_pass.replace(" ", "").strip()
+        print("--> Connecting to Gmail via SMTP_SSL (Port 465)...")
+        
+        # Connect via Port 465 SSL to bypass Render Port 587 restriction
+        server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+        server.login(sender_mail.strip(), clean_pass)
+        server.sendmail(sender_mail.strip(), receiver_email.strip(), msg.as_string())
         server.quit()
-        print(f"SUCCESS: Delivered to {receiver_email}")
+        
+        print(f"SUCCESS: Email delivered to {receiver_email}")
         return True
     except Exception as e:
-        print(f"SMTP DISPATCH ERROR: {str(e)}")
+        print(f"!!! SMTP DISPATCH ERROR: {str(e)}")
         return False
 
 @app.post("/subscribe-direct")
@@ -95,7 +105,7 @@ def subscribe_direct(req: UserSubscribeReq):
         conn.commit()
         conn.close()
     except Exception as e:
-        print("DB Error:", e)
+        print("DB Log Error:", e)
 
     status = send_instant_newsletter(req.email, req.phone, req.domain)
     return {"status": "completed", "email_sent": status}
