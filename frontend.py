@@ -1,16 +1,17 @@
 import streamlit as st
 import requests
 
-BACKEND_URL = "https://ai-daily-newsteller-1.onrender.com"
+# Live Render Backend URL
+BACKEND_URL = "https://ai-daily-newsteller.onrender.com"
 
 st.set_page_config(page_title="AI Tech Updates", page_icon="⚡", layout="centered")
 
-st.title("⚡ Direct AI Tech Newsletter")
+st.title("⚡ Direct AI Tech Newsletter Dispatch")
 st.caption("Enter phone and target email to receive instant spot tech update")
 
 with st.form("clean_user_form"):
     phone = st.text_input("Mobile Phone Number", max_chars=10, placeholder="7989176007")
-    receiver_email = st.text_input("Target Email Address", placeholder="user@gmail.com")
+    receiver_email = st.text_input("Target Email Address", placeholder="your_email@gmail.com")
     domain_choice = st.selectbox("Select Domain Topic", ["AI & Machine Learning", "Cloud Infrastructure", "Cybersecurity"])
     
     submitted = st.form_submit_button("Get Instant Update 🚀", use_container_width=True)
@@ -22,14 +23,14 @@ with st.form("clean_user_form"):
                 "email": receiver_email,
                 "domain": domain_choice
             }
-            with st.spinner("Dispatching update to target inbox..."):
+            with st.spinner("OpenAI generating newsletter & dispatching to inbox..."):
                 try:
                     res = requests.post(f"{BACKEND_URL}/subscribe-direct", json=payload)
                     if res.status_code == 200:
                         st.balloons()
-                        st.success(f"🎉 Spot Tech Update dispatched directly to {receiver_email}!")
+                        st.success(f"🎉 OpenAI Tech Newsletter dispatched directly to {receiver_email}!")
                     else:
-                        st.error("Server processing error. Try again.")
+                        st.error("Server error. Check credentials or Render logs.")
                 except Exception as e:
                     st.error(f"Connection Error: {e}")
         else:
